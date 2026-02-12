@@ -1,0 +1,82 @@
+# ============================================================
+# helm-failure-chart-lite - 5 Failure Scenarios
+# ============================================================
+
+# ------------------------------------------------------------
+# Frontend (Nginx-based UI)
+# SCENARIO 1: ImagePullBackOff - bad image tag
+# ------------------------------------------------------------
+frontend:
+  replicaCount: 1
+  image:
+    repository: nginx
+    # BUG: tag does not exist → ImagePullBackOff
+    tag: "1.99.0-nonexistent"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# ------------------------------------------------------------
+# Backend API (Node.js)
+# SCENARIO 2: CrashLoopBackOff - liveness probe on wrong port
+# SCENARIO 3: Service selector mismatch → 0 endpoints
+# ------------------------------------------------------------
+backend:
+  replicaCount: 1
+  image:
+    repository: node
+    tag: "18-alpine"
+    pullPolicy: IfNotPresent
+  containerPort: 3000
+  service:
+    type: ClusterIP
+    port: 3000
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      # BUG: probe hits port 9090, but container only listens on 3000
+      port: 9090
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    failureThreshold: 3
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# ------------------------------------------------------------
+# Worker (Python background processor)
+# SCENARIO 4: CreateContainerConfigError - missing ConfigMap key
+# ------------------------------------------------------------
+worker:
+  replicaCount: 1
+  image:
+    repository: python
+    tag: "3.11-slim"
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# ------------------------------------------------------------
+# Database connection config
+# ------------------------------------------------------------
+database:
+  host: postgres.database.svc.cluster.local
+  port: "5432"
+  name: app_orders

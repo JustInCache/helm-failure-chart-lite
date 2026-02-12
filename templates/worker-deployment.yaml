@@ -1,0 +1,54 @@
+# =============================================================
+# SCENARIO 4: CreateContainerConfigError
+# The env vars reference ConfigMap keys that do NOT exist:
+#   - DATABASE_HOST  (ConfigMap has DB_HOST)
+#   - DATABASE_PORT  (ConfigMap has DB_PORT)
+# Kubernetes cannot inject the env vars → CreateContainerConfigError
+# FIX: Change the configMapKeyRef keys to match what the ConfigMap
+#      actually defines (DB_HOST and DB_PORT) — or update the
+#      ConfigMap to use the keys the deployment expects.
+# =============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hfc-lite.fullname" . }}-worker
+
+  labels:
+    {{- include "hfc-lite.labels" . | nindent 4 }}
+    app: worker
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      serviceAccountName: {{ include "hfc-lite.serviceAccountName" . }}
+      containers:
+        - name: order-worker
+          image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          command: ["python", "-c", "import os, time; print('Worker started'); time.sleep(3600)"]
+          env:
+            # BUG: Key "DATABASE_HOST" does not exist in ConfigMap (actual key is "DB_HOST")
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hfc-lite.fullname" . }}-config
+                  key: DATABASE_HOST
+            # BUG: Key "DATABASE_PORT" does not exist in ConfigMap (actual key is "DB_PORT")
+            - name: DATABASE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hfc-lite.fullname" . }}-config
+                  key: DATABASE_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "hfc-lite.fullname" . }}-config
+                  key: DB_NAME
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}

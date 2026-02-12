@@ -1,0 +1,44 @@
+# =============================================================
+# SCENARIO 5: RBAC Permission Denied
+# The Role grants access to "deployments" and "replicasets" under
+# apiGroup "" (core API). But these resources actually belong to
+# the "apps" apiGroup.
+# SYMPTOM: Any code using the ServiceAccount to list/update
+#          deployments gets "forbidden" errors.
+# FIX: Change apiGroups from [""] to ["apps"] for the
+#      deployments and replicasets rule.
+# =============================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "hfc-lite.fullname" . }}-role
+  labels:
+    {{- include "hfc-lite.labels" . | nindent 4 }}
+rules:
+  # This rule is correct — pods are in the core ("") apiGroup
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "configmaps", "services"]
+    verbs: ["get", "list", "watch"]
+  # BUG: deployments and replicasets belong to apiGroup "apps", not ""
+  - apiGroups: [""]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  # This rule is correct
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "hfc-lite.fullname" . }}-rolebinding
+  labels:
+    {{- include "hfc-lite.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "hfc-lite.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: {{ include "hfc-lite.fullname" . }}-role
+  apiGroup: rbac.authorization.k8s.io

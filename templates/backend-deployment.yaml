@@ -1,0 +1,47 @@
+# =============================================================
+# SCENARIO 2: CrashLoopBackOff
+# The container runs a simple Node.js sleep command (no HTTP server).
+# Liveness probe targets port 9090 with path /healthz.
+# Since nothing listens on 9090, the probe fails repeatedly,
+# Kubernetes kills the container, and it enters CrashLoopBackOff.
+# FIX: Either remove the liveness probe or run an actual HTTP
+#      server and point the probe to the correct port (3000).
+# =============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hfc-lite.fullname" . }}-backend
+
+  labels:
+    {{- include "hfc-lite.labels" . | nindent 4 }}
+    app: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      serviceAccountName: {{ include "hfc-lite.serviceAccountName" . }}
+      containers:
+        - name: backend-api
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command: ["node", "-e", "console.log('API starting...'); setTimeout(() => {}, 600000)"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.containerPort }}
+              protocol: TCP
+          # Liveness probe on WRONG port → repeated failures → CrashLoopBackOff
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.backend.livenessProbe.httpGet.path }}
+              port: {{ .Values.backend.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.backend.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backend.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.backend.livenessProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}

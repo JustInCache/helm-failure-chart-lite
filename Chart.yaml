@@ -1,0 +1,19 @@
+apiVersion: v2
+name: helm-failure-chart-lite
+description: Lightweight Helm chart with 5 targeted Kubernetes failure scenarios for AI agent demos and SRE training
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: JustInCache
+home: https://github.com/JustInCache/helm-failure-chart-lite
+sources:
+  - https://github.com/JustInCache/helm-failure-chart-lite
+keywords:
+  - kubernetes
+  - troubleshooting
+  - failure-scenarios
+  - ai-agent
+  - eks
+  - demo
+  - lite

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hfc-lite.fullname" . }}-config
+
+  labels:
+    {{- include "hfc-lite.labels" . | nindent 4 }}
+data:
+  APP_ENV: "production"
+  LOG_LEVEL: "info"
+  # Key is DB_HOST — but worker will reference DATABASE_HOST (mismatch)
+  DB_HOST: {{ .Values.database.host }}
+  # Key is DB_PORT — but worker will reference DATABASE_PORT (mismatch)
+  DB_PORT: {{ .Values.database.port | quote }}
+  DB_NAME: {{ .Values.database.name }}

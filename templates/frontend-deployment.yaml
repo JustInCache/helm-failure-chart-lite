@@ -1,0 +1,35 @@
+# =============================================================
+# SCENARIO 1: ImagePullBackOff
+# The image tag "nginx:1.99.0-nonexistent" does not exist.
+# Pod will be stuck in ImagePullBackOff / ErrImagePull.
+# FIX: Change the tag to a valid version like "1.25-alpine"
+# =============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hfc-lite.fullname" . }}-frontend
+
+  labels:
+    {{- include "hfc-lite.labels" . | nindent 4 }}
+    app: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      serviceAccountName: {{ include "hfc-lite.serviceAccountName" . }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
